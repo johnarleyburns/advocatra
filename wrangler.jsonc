@@ -18,15 +18,21 @@
         "ENVIRONMENT": "dev",
         "APP_ORIGIN": "https://dev.advocatra.com",
         "APP_DOMAIN": "advocatra.com",
-        "APP_SUFFIX": "-dev"
+        "APP_SUFFIX": "-dev",
+        // Test-mode prices under the arleyxu financial services Stripe
+        // account (same account Saldima uses) — "Advocatra Monthly
+        // Subscription" ($20/mo) and "Advocatra Annual Subscription"
+        // ($200/yr). Not secrets; committed the same way Saldima commits
+        // its own price ids. STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET
+        // are wrangler secrets, never committed here.
+        "STRIPE_PRICE_MONTHLY": "price_1UgHVPDB7RpIiDnc3l1E294Q",
+        "STRIPE_PRICE_YEARLY": "price_1UgHV1DB7RpIiDncn3RCBcno"
       },
       "workers_dev": false,
       "routes": [
         { "pattern": "dev.advocatra.com", "custom_domain": true },
-        // Per-tenant vanity subdomains (e.g. janedoe-dev.advocatra.com) need a
-        // wildcard DNS record (*.advocatra.com, proxied) before this route is
-        // live — not created yet; the custom_domain route above is sufficient
-        // for /signup and /webhook/stripe, which live on the bare dev host.
+        // Wildcard DNS record (*-dev.advocatra.com, proxied) created on the
+        // zone; per-tenant vanity dev subdomains route through this pattern.
         { "pattern": "*-dev.advocatra.com/*", "zone_name": "advocatra.com" }
       ],
       "kv_namespaces": [{ "binding": "KV", "id": "f244c0a60bbf4755aa45c7a627350ff1" }],

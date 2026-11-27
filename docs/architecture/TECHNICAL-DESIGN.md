@@ -367,8 +367,13 @@ advocatra-case-verifier/        # deferred to M3: cross-platform fixture parity
   `CLAUDE.md` ("never guess a missing decision"), this needs an explicit
   decision before the actual Durable Object/API wiring is built, not an
   invented default.
-- **Stripe product/price setup is not yet done.** No Stripe product, price
-  IDs, or webhook contract exist for Advocatra yet (Saldima's own
-  `apps/web/src/signup.ts` + `packages/testkit/src/stripe/fake-stripe.ts`
-  is the pattern to follow once this is ready to build). Needs the owner's
-  Stripe account access, not something to fabricate.
+- **Stripe product/price setup: done for dev, test mode only.** "Advocatra
+  Monthly Subscription" ($20/mo) and "Advocatra Annual Subscription"
+  ($200/yr) exist under the same arleyxu financial services Stripe account
+  Saldima uses, created by the owner directly in the Stripe dashboard. A
+  webhook endpoint for `https://dev.advocatra.com/webhook/stripe` exists
+  and its signing secret, plus the Stripe secret key, are set as
+  `wrangler secret`s on `advocatra-dev` (never committed). Live-mode
+  products/prices and staging/production webhook endpoints are not yet
+  created — do that when those environments are actually being stood up,
+  not preemptively.

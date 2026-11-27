@@ -309,7 +309,7 @@ advocatra/                     # web/cloud, TypeScript
   packages/billing/              # canonical billing schema (pure TS)
   packages/crypto/               # Web Crypto key hierarchy (passphrase KDF, wrap/unwrap, HKDF, AEAD envelope)
   packages/vault/                # manifest + snapshot assembly on top of packages/crypto
-  packages/sync/                 # snapshot sync client (added later)
+  packages/sync/                 # revision + lease logic (pure); no Workers/DO wiring yet
   docs/architecture/TECHNICAL-DESIGN.md   # this document
 
 advocatra-ios/                 # native Swift/SwiftUI
@@ -359,3 +359,16 @@ advocatra-case-verifier/        # deferred to M3: cross-platform fixture parity
   platforms is maintained by hand-review, not by an automated check. Treat
   any schema change as incomplete until it has been applied to all three
   repos in the same logical change.
+- **Account authentication model is undesigned.** `packages/sync` (added
+  after this doc's §7/§8) implements the pure revision/lease logic only —
+  it deliberately does not decide how a practitioner authenticates to the
+  cloud API (email+password vs. magic link, session cookie vs. bearer
+  token, device enrollment flow). Per the hard-limit rule in every repo's
+  `CLAUDE.md` ("never guess a missing decision"), this needs an explicit
+  decision before the actual Durable Object/API wiring is built, not an
+  invented default.
+- **Stripe product/price setup is not yet done.** No Stripe product, price
+  IDs, or webhook contract exist for Advocatra yet (Saldima's own
+  `apps/web/src/signup.ts` + `packages/testkit/src/stripe/fake-stripe.ts`
+  is the pattern to follow once this is ready to build). Needs the owner's
+  Stripe account access, not something to fabricate.

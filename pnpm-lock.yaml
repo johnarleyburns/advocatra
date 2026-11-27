@@ -54,6 +54,12 @@ importers:
         specifier: ^4.0.0
         version: 4.6.7
 
+  packages/sync:
+    dependencies:
+      zod:
+        specifier: ^4.0.0
+        version: 4.6.7
+
   packages/vault:
     dependencies:
       '@advocatra/billing':

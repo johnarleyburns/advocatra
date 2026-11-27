@@ -48,6 +48,12 @@ importers:
         specifier: ^4.0.0
         version: 4.6.7
 
+  packages/crypto:
+    dependencies:
+      zod:
+        specifier: ^4.0.0
+        version: 4.6.7
+
 packages:
 
   '@babel/helper-string-parser@7.29.15':

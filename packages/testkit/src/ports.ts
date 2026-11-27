@@ -18,3 +18,15 @@ export interface KeyValueStore {
   get(key: string): Promise<string | null>;
   put(key: string, value: string): Promise<void>;
 }
+
+/**
+ * Shaped after Cloudflare's real R2Bucket binding (put/get only — this app
+ * never needs list/delete/multipart). Stores and serves opaque text
+ * (always an `EncryptedEnvelope` JSON string in practice) — this port has
+ * no concept of what the ciphertext means and must never be given a
+ * decrypt function to call.
+ */
+export interface ObjectStore {
+  put(key: string, value: string): Promise<void>;
+  get(key: string): Promise<{ text(): Promise<string> } | null>;
+}

@@ -42,5 +42,7 @@ jobs:
         run: pnpm check:spdx
       - name: Dependency licenses
         run: pnpm check:licenses
+      - name: Decrypt-capability boundary
+        run: pnpm check:no-decrypt-in-app
       - name: Unit tests with coverage
         run: pnpm test:coverage

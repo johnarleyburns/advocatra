@@ -8,6 +8,12 @@ importers:
 
   .:
     dependencies:
+      '@advocatra/crypto':
+        specifier: workspace:*
+        version: link:packages/crypto
+      '@advocatra/sync':
+        specifier: workspace:*
+        version: link:packages/sync
       '@advocatra/testkit':
         specifier: workspace:*
         version: link:packages/testkit

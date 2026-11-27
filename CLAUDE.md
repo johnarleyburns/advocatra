@@ -52,9 +52,14 @@ apps/web/src/
                           (ported from Saldima's provisionBook, as provisionVault)
   accounts.ts              signup-completion/login/logout/session logic,
                           fully unit-testable via injected deps
+  vault.ts                 encrypted snapshot upload/download, revision +
+                          lease enforcement (@advocatra/sync) against R2 —
+                          never decrypts; see the hard rule below
   vault-do.ts              the Vault Durable Object, one per tenant — thin
                           routing only, see the hard rule below
   data-access/auth-store.ts  pure SQL-shaped helpers against an injected executor
+  data-access/vault-store.ts pure SQL-shaped helpers for sync coordination
+                          state (revision, R2 key, lease) — never vault data
   edge/tenant-lookup.ts     pure hostname -> tenantId resolution via KV
 packages/
   case/                  canonical case schema: Taxpayer, Matter (+
@@ -85,12 +90,15 @@ Boundary rules:
 
 ## Commands
 
-| Command          | Purpose                             |
-| ---------------- | ----------------------------------- |
-| `pnpm install`   | install the workspace               |
-| `pnpm typecheck` | `tsc --noEmit` across the workspace |
-| `pnpm lint`      | Biome check                         |
-| `pnpm test`      | Vitest unit tests                   |
+| Command                        | Purpose                                              |
+| ------------------------------ | ---------------------------------------------------- |
+| `pnpm install`                 | install the workspace                                |
+| `pnpm typecheck`               | `tsc --noEmit` across the workspace                  |
+| `pnpm lint`                    | Biome check                                          |
+| `pnpm test`                    | Vitest unit tests                                    |
+| `pnpm check:spdx`              | every tracked source file has an SPDX header         |
+| `pnpm check:licenses`          | dependency license scan (GPL/AGPL/unknown fail)      |
+| `pnpm check:no-decrypt-in-app` | fails if `apps/web` imports a decrypt-capable export |
 
 Never run a deploy command without an explicit, one-time owner request. See
 "Hard limits" below.
@@ -161,7 +169,8 @@ Never run a deploy command without an explicit, one-time owner request. See
    mechanism behind the "server never sees unencrypted taxpayer data"
    claim — a PR that imports a decrypt function into any file under
    `apps/web/` is a security regression, not a feature, however the task
-   was phrased.
+   was phrased. Enforced mechanically by `pnpm check:no-decrypt-in-app`
+   (CI-gated), not just by this comment.
 
 ## Definition of done (every PR)
 
@@ -182,7 +191,15 @@ Workers runtime or Stripe credentials required to test. `wrangler deploy
 --dry-run` confirms the new KV/DO bindings and migration are valid config;
 no real deploy without an explicit one-time ask.
 
-Not yet implemented: wiring `packages/vault`/`packages/sync` into the
-`Vault` DO (R2-backed snapshot upload/download), real Stripe product/
-price/webhook secrets (owner-supplied), the wildcard DNS record vanity
-subdomains need in dev/staging/production, and any UI.
+Cloud service, phase B done: the `Vault` DO's encrypted snapshot sync —
+`GET /vault/snapshot`, `POST /vault/lease`, `POST /vault/snapshot` — all
+session-gated, backed by R2, with revision (reject-stale) and
+single-writer-lease enforcement via `packages/sync`. The DO never
+decrypts anything it stores; this is enforced mechanically
+(`check:no-decrypt-in-app`), not just documented. Attachment/document
+object storage is not yet wired (only the whole-vault "records" snapshot).
+
+Not yet implemented: attachment/document object upload (separate from the
+records snapshot), real Stripe product/price/webhook secrets
+(owner-supplied — in progress), the wildcard DNS record vanity subdomains
+need in dev/staging/production, and any UI.

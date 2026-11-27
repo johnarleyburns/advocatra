@@ -19,6 +19,9 @@
     "check:spdx": "node scripts/check-spdx.mjs",
     "check:licenses": "node scripts/license-scan.mjs"
   },
+  "dependencies": {
+    "@advocatra/testkit": "workspace:*"
+  },
   "devDependencies": {
     "@biomejs/biome": "^2.3.4",
     "@cloudflare/workers-types": "^5.20261120.1",

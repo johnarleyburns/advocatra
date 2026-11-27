@@ -6,25 +6,76 @@
   "compatibility_date": "2026-11-20",
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
-  "vars": { "ENVIRONMENT": "local" },
+  "vars": { "ENVIRONMENT": "local", "APP_DOMAIN": "advocatra.com", "APP_SUFFIX": "" },
+  "durable_objects": {
+    "bindings": [{ "name": "VAULT", "class_name": "Vault" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Vault"] }],
   "env": {
     "dev": {
       "name": "advocatra-dev",
-      "vars": { "ENVIRONMENT": "dev", "APP_ORIGIN": "https://dev.advocatra.com" },
+      "vars": {
+        "ENVIRONMENT": "dev",
+        "APP_ORIGIN": "https://dev.advocatra.com",
+        "APP_DOMAIN": "advocatra.com",
+        "APP_SUFFIX": "-dev"
+      },
       "workers_dev": false,
-      "routes": [{ "pattern": "dev.advocatra.com", "custom_domain": true }]
+      "routes": [
+        { "pattern": "dev.advocatra.com", "custom_domain": true },
+        // Per-tenant vanity subdomains (e.g. janedoe-dev.advocatra.com) need a
+        // wildcard DNS record (*.advocatra.com, proxied) before this route is
+        // live — not created yet; the custom_domain route above is sufficient
+        // for /signup and /webhook/stripe, which live on the bare dev host.
+        { "pattern": "*-dev.advocatra.com/*", "zone_name": "advocatra.com" }
+      ],
+      "kv_namespaces": [{ "binding": "KV", "id": "f244c0a60bbf4755aa45c7a627350ff1" }],
+      "r2_buckets": [{ "binding": "R2", "bucket_name": "advocatra-dev-snapshots" }],
+      "durable_objects": {
+        "bindings": [{ "name": "VAULT", "class_name": "Vault" }]
+      },
+      "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Vault"] }]
     },
     "staging": {
       "name": "advocatra-staging",
-      "vars": { "ENVIRONMENT": "staging", "APP_ORIGIN": "https://stage.advocatra.com" },
+      "vars": {
+        "ENVIRONMENT": "staging",
+        "APP_ORIGIN": "https://stage.advocatra.com",
+        "APP_DOMAIN": "advocatra.com",
+        "APP_SUFFIX": "-stage"
+      },
       "workers_dev": false,
-      "routes": [{ "pattern": "stage.advocatra.com", "custom_domain": true }]
+      "routes": [
+        { "pattern": "stage.advocatra.com", "custom_domain": true },
+        { "pattern": "*-stage.advocatra.com/*", "zone_name": "advocatra.com" }
+      ],
+      "kv_namespaces": [{ "binding": "KV", "id": "07637ea1cecc461183300d801424f56a" }],
+      "r2_buckets": [{ "binding": "R2", "bucket_name": "advocatra-staging-snapshots" }],
+      "durable_objects": {
+        "bindings": [{ "name": "VAULT", "class_name": "Vault" }]
+      },
+      "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Vault"] }]
     },
     "production": {
       "name": "advocatra-production",
-      "vars": { "ENVIRONMENT": "production", "APP_ORIGIN": "https://advocatra.com" },
-      "workers_dev": false,
-      "routes": [{ "pattern": "advocatra.com", "custom_domain": true }]
+      "vars": {
+        "ENVIRONMENT": "production",
+        "APP_ORIGIN": "https://advocatra.com",
+        "APP_DOMAIN": "advocatra.com",
+        "APP_SUFFIX": ""
+      },
+      "routes": [
+        { "pattern": "advocatra.com", "custom_domain": true },
+        { "pattern": "*.advocatra.com/*", "zone_name": "advocatra.com" }
+      ],
+      "kv_namespaces": [{ "binding": "KV", "id": "REPLACE_WITH_PRODUCTION_KV_ID" }],
+      "r2_buckets": [
+        { "binding": "R2", "bucket_name": "advocatra-production-snapshots" }
+      ],
+      "durable_objects": {
+        "bindings": [{ "name": "VAULT", "class_name": "Vault" }]
+      },
+      "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Vault"] }]
     }
   }
 }

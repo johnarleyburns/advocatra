@@ -41,7 +41,21 @@ iOS track lives in `johnarleyburns/advocatra-ios`, the Android track in
 ### Repository layout
 
 ```
-apps/web/src/index.ts   minimal Hono app (health check only, for now)
+apps/web/src/
+  index.ts               Hono app: /health, /signup, /webhook/stripe, and the
+                          catch-all that resolves hostname -> tenantId (KV)
+                          and forwards to that tenant's Vault DO
+  auth.ts                 password hashing, sessions, TOTP (ported from Saldima)
+  signup.ts                name/email validation, tenant host, Stripe checkout
+                          + webhook signature verification (ported from Saldima)
+  provision.ts             creates a tenant, writes KV, emails the setup link
+                          (ported from Saldima's provisionBook, as provisionVault)
+  accounts.ts              signup-completion/login/logout/session logic,
+                          fully unit-testable via injected deps
+  vault-do.ts              the Vault Durable Object, one per tenant — thin
+                          routing only, see the hard rule below
+  data-access/auth-store.ts  pure SQL-shaped helpers against an injected executor
+  edge/tenant-lookup.ts     pure hostname -> tenantId resolution via KV
 packages/
   case/                  canonical case schema: Taxpayer, Matter (+
                           TaxCourtDetails), Document, Correspondence, Task,
@@ -49,6 +63,15 @@ packages/
   billing/               canonical billing schema: FeeSchedule, Engagement,
                           TimeEntry, Retainer, Invoice, Payment, and the
                           fee-schedule guarantee-window invariant
+  crypto/                Web Crypto key hierarchy (passphrase KDF, wrap/unwrap,
+                          HKDF, AEAD envelope) — client-side only, never
+                          imported by apps/web
+  vault/                 manifest + snapshot assembly on packages/crypto —
+                          client-side only, never imported by apps/web
+  sync/                  revision + lease logic (pure)
+  testkit/               fakes (Clock, IdGenerator, KV, SQL, fetch, email) —
+                          apps/web depends on this for port type definitions,
+                          same as Saldima's packages/testkit
 docs/architecture/TECHNICAL-DESIGN.md
 ```
 
@@ -130,6 +153,15 @@ Never run a deploy command without an explicit, one-time owner request. See
 6. Never invent iOS/Android behaviour: schema changes land in this repo
    first and get mirrored by hand into the native repos in the same logical
    change.
+7. **`vault-do.ts` (and anything added to it later) must never call a
+   decrypt function from `packages/crypto` or `packages/vault`** —
+   `decryptVaultSnapshot`, `decryptDocumentObject`, or anything requiring
+   the vault key. The Vault DO stores and serves ciphertext only; it has
+   no way to decrypt it and must stay that way. This is the literal
+   mechanism behind the "server never sees unencrypted taxpayer data"
+   claim — a PR that imports a decrypt function into any file under
+   `apps/web/` is a security regression, not a feature, however the task
+   was phrased.
 
 ## Definition of done (every PR)
 
@@ -139,7 +171,18 @@ Never run a deploy command without an explicit, one-time owner request. See
 
 ## Status
 
-Foundational scaffold: governance docs, `TECHNICAL-DESIGN.md`, and the
-canonical case/billing schema with unit tests. Storage adapters, the cloud
-API, Stripe, sync and any UI are not yet implemented — see
-`TECHNICAL-DESIGN.md` for the planned milestones.
+Foundational scaffold done: governance docs, `TECHNICAL-DESIGN.md`, and the
+canonical case/billing/crypto/vault/sync packages with unit tests.
+
+Cloud service, phase A done: tenant signup/provisioning (vanity subdomain +
+KV host lookup, mirroring Saldima), the per-tenant `Vault` DO's account
+routes (setup/login/logout/session), and Stripe Checkout + webhook
+verification — all unit-tested via `packages/testkit` fakes, no real
+Workers runtime or Stripe credentials required to test. `wrangler deploy
+--dry-run` confirms the new KV/DO bindings and migration are valid config;
+no real deploy without an explicit one-time ask.
+
+Not yet implemented: wiring `packages/vault`/`packages/sync` into the
+`Vault` DO (R2-backed snapshot upload/download), real Stripe product/
+price/webhook secrets (owner-supplied), the wildcard DNS record vanity
+subdomains need in dev/staging/production, and any UI.

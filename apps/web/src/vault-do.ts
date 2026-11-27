@@ -36,8 +36,10 @@ import {
   acquireOrRenewLease,
   downloadSnapshot,
   LeaseConflictError,
+  loadManifest,
   type ObjectStorePort,
   RevisionConflictError,
+  saveManifest,
   type UploadInput,
   uploadSnapshot,
   type VaultDeps,
@@ -172,6 +174,26 @@ export class Vault extends DurableObject<Env> {
       );
       const session = token ? await validateSession(this.deps(c.req.raw), token) : null;
       return session ? c.json({ ok: true, ...session }) : c.json({ ok: false }, 401);
+    });
+
+    // Opaque storage for the vault manifest (the dual passphrase/recovery-
+    // code keyEnvelope a client built with @advocatra/vault's createVault).
+    // Session-gated, same as the snapshot routes below; this file never
+    // parses the manifest JSON, let alone decrypts anything in it.
+    this.app.get("/vault/manifest", async (c) => {
+      if (!(await this.requireSession(c.req.raw)))
+        return c.json({ ok: false, error: "unauthenticated" }, 401);
+      const json = await loadManifest(this.vaultDeps(c.req.raw));
+      if (!json) return c.json({ ok: false, error: "not_found" }, 404);
+      return c.text(json, 200, { "content-type": "application/json" });
+    });
+
+    this.app.put("/vault/manifest", async (c) => {
+      if (!(await this.requireSession(c.req.raw)))
+        return c.json({ ok: false, error: "unauthenticated" }, 401);
+      const text = await c.req.text();
+      await saveManifest(this.vaultDeps(c.req.raw), text);
+      return c.json({ ok: true });
     });
 
     // Encrypted vault snapshot sync — every route below requires a valid

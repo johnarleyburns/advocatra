@@ -6,7 +6,9 @@ import {
   acquireOrRenewLease,
   downloadSnapshot,
   LeaseConflictError,
+  loadManifest,
   RevisionConflictError,
+  saveManifest,
   uploadSnapshot,
   type VaultDeps,
 } from "./vault.ts";
@@ -141,6 +143,31 @@ describe("uploadSnapshot", () => {
       snapshot: sampleEnvelope,
     });
     expect(result.revision).toBe(2);
+  });
+});
+
+describe("manifest storage", () => {
+  it("returns null for a tenant that has never created a vault", async () => {
+    const deps = makeDeps();
+    expect(await loadManifest(deps)).toBeNull();
+  });
+
+  it("stores and serves back exactly the bytes it was given", async () => {
+    const deps = makeDeps();
+    const manifestJson = JSON.stringify({ formatVersion: 1, vaultId: "tenant-1" });
+    await saveManifest(deps, manifestJson);
+    expect(await loadManifest(deps)).toBe(manifestJson);
+    expect(
+      (deps.r2 as FakeObjectStore).has("tenants/tenant-1/vault-manifest.json"),
+    ).toBe(true);
+  });
+
+  it("replaces the stored manifest wholesale on a second save", async () => {
+    const deps = makeDeps();
+    await saveManifest(deps, JSON.stringify({ version: "old" }));
+    const replacement = JSON.stringify({ version: "new" });
+    await saveManifest(deps, replacement);
+    expect(await loadManifest(deps)).toBe(replacement);
   });
 });
 

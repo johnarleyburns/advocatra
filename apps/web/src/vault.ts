@@ -89,6 +89,30 @@ export function acquireOrRenewLease(deps: VaultDeps, deviceId: string): EditingL
   return lease;
 }
 
+function manifestObjectKey(tenantId: string): string {
+  return `tenants/${tenantId}/vault-manifest.json`;
+}
+
+/**
+ * Opaque storage for the vault manifest (format/app/schema version, the
+ * dual passphrase/recovery-code `keyEnvelope` from `@advocatra/vault`'s
+ * `createVault`). Ported from Saldima's shipped `VaultStore.saveKeyEnvelope`/
+ * `loadKeyEnvelope` (`apps/web/src/vault-store.ts` there): this file never
+ * parses or validates the JSON it's handed — it has no schema to check
+ * it against, since `@advocatra/vault` is never imported here (see
+ * CLAUDE.md hard limit #7) — it only stores and serves the bytes a client
+ * created with `createVault`/wraps when rotating a passphrase.
+ */
+export async function loadManifest(deps: VaultDeps): Promise<string | null> {
+  const object = await deps.r2.get(manifestObjectKey(deps.tenantId));
+  return object ? await object.text() : null;
+}
+
+/** Replace the stored manifest wholesale — there is exactly one per tenant, no revisioning. */
+export async function saveManifest(deps: VaultDeps, json: string): Promise<void> {
+  await deps.r2.put(manifestObjectKey(deps.tenantId), json);
+}
+
 export interface UploadInput {
   readonly deviceId: string;
   readonly baseRevision: number;

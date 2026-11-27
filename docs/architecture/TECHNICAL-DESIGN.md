@@ -350,11 +350,15 @@ advocatra-case-verifier/        # deferred to M3: cross-platform fixture parity
   implementation is vetted (license, audit status) for adoption.
 - **iOS/Android/MCP ports of `createVault`/`unlockVaultWithPassphrase`/
   `unlockVaultWithRecoveryCode` don't exist yet.** The web repo
-  (`packages/crypto`/`packages/vault`) is the only place a vault can
-  actually be created or unlocked today. Every other client — the native
-  apps, and any future local MCP server — needs its own hand-port of this
-  exact sequence (no shared code, same as the rest of this project), not a
-  reinvention of it.
+  (`packages/crypto`/`packages/vault`) is the only place the crypto for
+  creating or unlocking a vault exists today. The server-side storage half
+  is done — `GET`/`PUT /vault/manifest` on the `Vault` DO (opaque,
+  session-gated, ported from Saldima's `/app/vault/keys`) — so any client
+  can now store/fetch the manifest; what's missing is each client doing
+  the local `createVault`/`unlockVaultWith*` sequence itself. Every client
+  — the native apps, and any future local MCP server — needs its own
+  hand-port of this exact sequence (no shared code, same as the rest of
+  this project), not a reinvention of it.
 - **StoreKit/Play Billing.** If the native apps ever surface the $20/mo or
   $200/yr hosted plan for purchase *inside* the app, Apple/Google may
   require it be sold through their in-app purchase systems (30% platform

@@ -210,7 +210,13 @@ from Saldima's own shipped zero-knowledge design (`packages/crypto`'s
   code, Crockford base32, grouped for transcription — no PBKDF2 needed,
   the code is already high-entropy machine output, not a human passphrase).
   Either secret alone unlocks the vault; losing both makes it permanently
-  unrecoverable, by construction — the whole point of zero-knowledge.
+  unrecoverable, by construction — the whole point of zero-knowledge. The
+  wrap step itself is **AES-256-GCM** (a random 12-byte IV, output stored
+  as `iv || ciphertext+tag`) rather than Web Crypto's AES-KW: the manifest
+  is shared across every client of one tenant (web, iOS, Android, MCP),
+  and Apple's CryptoKit has no AES-KW primitive, so AES-GCM is the one
+  AEAD every platform's crypto library exposes — and it's a more literal
+  reading of "AES-256-GCM everywhere" than AES-KW ever was.
   `createVault`/`unlockVaultWithPassphrase`/`unlockVaultWithRecoveryCode`
   in `packages/vault/src/vault-access.ts` are the only entry points; no
   client should hand-roll this sequence itself.

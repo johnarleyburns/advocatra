@@ -49,9 +49,12 @@ export function generateRecoveryCode(): string {
 }
 
 /**
- * Derives a non-extractable AES-KW key-encryption key directly from a
+ * Derives a non-extractable AES-GCM key-encryption key directly from a
  * recovery code's own entropy — no PBKDF2 needed, the code is already
- * high-entropy random output, not a human-chosen passphrase.
+ * high-entropy random output, not a human-chosen passphrase. AES-GCM
+ * rather than AES-KW for the same cross-platform-interop reason as
+ * `passphrase-kdf.ts`'s `deriveKeyEncryptionKey`: Apple's CryptoKit has
+ * no AES-KW primitive.
  */
 export async function deriveKeyEncryptionKeyFromRecoveryCode(
   code: string,
@@ -71,8 +74,8 @@ export async function deriveKeyEncryptionKeyFromRecoveryCode(
       info: asBufferSource(utf8ToBytes("advocatra/vault/recovery/v1")),
     },
     material,
-    { name: "AES-KW", length: 256 },
+    { name: "AES-GCM", length: 256 },
     false,
-    ["wrapKey", "unwrapKey"],
+    ["encrypt", "decrypt"],
   );
 }

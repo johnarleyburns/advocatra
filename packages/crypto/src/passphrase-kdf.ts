@@ -11,9 +11,16 @@ import { asBufferSource, utf8ToBytes } from "./bytes.ts";
 export const DEFAULT_PBKDF2_ITERATIONS = 600_000;
 
 /**
- * Derive a non-extractable AES-KW key-encryption key from a passphrase and
- * salt. The KEK is used only to wrap/unwrap the vault master key — it is
- * never used to encrypt taxpayer data directly.
+ * Derive a non-extractable AES-GCM key-encryption key from a passphrase and
+ * salt. The KEK is used only to wrap/unwrap the vault master key (see
+ * `vault-key.ts`) — it is never used to encrypt taxpayer data directly.
+ *
+ * AES-GCM rather than AES-KW: Web Crypto has AES-KW, but Apple's CryptoKit
+ * (the iOS client's crypto library) does not, and the manifest this KEK
+ * wraps must be unlockable from any client of the same vault. AES-GCM is
+ * the one AEAD primitive every platform's crypto library exposes, so it's
+ * the interoperable choice — and matches TECHNICAL-DESIGN.md's own
+ * "AES-256-GCM everywhere" principle more literally than AES-KW did.
  */
 export async function deriveKeyEncryptionKey(
   passphrase: string,
@@ -30,8 +37,8 @@ export async function deriveKeyEncryptionKey(
   return crypto.subtle.deriveKey(
     { name: "PBKDF2", salt: asBufferSource(salt), iterations, hash: "SHA-256" },
     baseKey,
-    { name: "AES-KW", length: 256 },
+    { name: "AES-GCM", length: 256 },
     false,
-    ["wrapKey", "unwrapKey"],
+    ["encrypt", "decrypt"],
   );
 }

@@ -189,18 +189,31 @@ Account authentication (email/password, Stripe subscription) is **always
 separate** from vault encryption. The account password never becomes, or
 derives, the encryption key.
 
-Key hierarchy:
+Key hierarchy, implemented in `packages/crypto`/`packages/vault`, ported
+from Saldima's own shipped zero-knowledge design (`packages/crypto`'s
+`recovery.ts`/`vault-key.ts`/`passphrase-kdf.ts` and
+`apps/web/src/client/vault.ts` there — not invented fresh):
 
-- A random **vault master key**.
+- A random **vault master key** (`generateVaultMasterKeyMaterial`).
 - Separate derived keys for the record index and for document objects
-  (HKDF from the master key, distinct `info` strings per purpose).
-- Per-object random nonces; AES-256-GCM (authenticated encryption)
-  everywhere.
-- The vault master key itself is wrapped by a key-encryption key (KEK)
-  derived from the user's passphrase via Argon2id where available, or
-  PBKDF2 (high iteration count) via native Web Crypto where Argon2id isn't
-  practically available — flagged as an open risk in section 9; do not
-  invent a custom KDF.
+  (HKDF from the master key, distinct `info` strings per purpose —
+  `deriveDataKey`).
+- Per-object random nonces; AES-256-GCM everywhere, and every envelope's
+  ciphertext is bound to `{ vaultId, purpose, schemaVersion }` as
+  authenticated additional data (`EnvelopeAad`), so a valid envelope for
+  one vault or purpose can't be replayed as another's.
+- The vault master key is wrapped **two independent ways**, stored
+  together in the manifest's `keyEnvelope` (`packages/vault/src/manifest.ts`):
+  a passphrase-derived KEK (PBKDF2-SHA256, 600,000 iterations — Argon2id
+  remains preferred if/when an audited WASM implementation is adopted, see
+  §9) and a recovery-code-derived KEK (HKDF directly over a 20-byte random
+  code, Crockford base32, grouped for transcription — no PBKDF2 needed,
+  the code is already high-entropy machine output, not a human passphrase).
+  Either secret alone unlocks the vault; losing both makes it permanently
+  unrecoverable, by construction — the whole point of zero-knowledge.
+  `createVault`/`unlockVaultWithPassphrase`/`unlockVaultWithRecoveryCode`
+  in `packages/vault/src/vault-access.ts` are the only entry points; no
+  client should hand-roll this sequence itself.
 - Versioned encryption metadata on every object, so the format can evolve
   without breaking old vaults.
 
@@ -209,14 +222,8 @@ Keychain/Keystore-held key, unlocked by device passcode/biometric or an
 app passphrase) — a deliberate departure from Saldima, whose iOS/Android
 local `.gnucash` file is unencrypted by Saldima's own explicit design
 decision. Advocatra cannot make that same call given the sensitivity of the
-data it stores.
-
-The recovery process is a product decision that must be nailed down before
-accepting real client data: losing the encryption key must not let
-Advocatra's own operator decrypt the vault (that is the whole point of the
-zero-knowledge claim), which means key loss is also, by construction,
-unrecoverable unless the user set up an explicit recovery mechanism they
-control (e.g., a printed recovery code) ahead of time.
+data it stores. The iOS/Android ports of `createVault`/`unlockVault*` are
+not yet written — see §9.
 
 ## 6. Billing, engagements and fee schedules
 
@@ -336,9 +343,18 @@ advocatra-case-verifier/        # deferred to M3: cross-platform fixture parity
   regardless of citation, but the default `guaranteeDays` value and any
   jurisdiction-specific wording in the UI should match the real rule.
 - **Argon2id in the browser.** Web Crypto's native KDFs are PBKDF2 and
-  HKDF; Argon2id requires a WASM dependency. Decide and vet that dependency
-  (license, audit status) before the encryption milestone, rather than
-  defaulting to a weaker PBKDF2-only scheme silently.
+  HKDF; Argon2id requires a WASM dependency. `packages/vault`'s
+  `createVault` uses PBKDF2-SHA256 at 600,000 iterations today — the
+  documented fallback, not an invented scheme (same constant Saldima
+  ships) — but Argon2id remains preferred if/when an audited WASM
+  implementation is vetted (license, audit status) for adoption.
+- **iOS/Android/MCP ports of `createVault`/`unlockVaultWithPassphrase`/
+  `unlockVaultWithRecoveryCode` don't exist yet.** The web repo
+  (`packages/crypto`/`packages/vault`) is the only place a vault can
+  actually be created or unlocked today. Every other client — the native
+  apps, and any future local MCP server — needs its own hand-port of this
+  exact sequence (no shared code, same as the rest of this project), not a
+  reinvention of it.
 - **StoreKit/Play Billing.** If the native apps ever surface the $20/mo or
   $200/yr hosted plan for purchase *inside* the app, Apple/Google may
   require it be sold through their in-app purchase systems (30% platform
@@ -359,14 +375,11 @@ advocatra-case-verifier/        # deferred to M3: cross-platform fixture parity
   platforms is maintained by hand-review, not by an automated check. Treat
   any schema change as incomplete until it has been applied to all three
   repos in the same logical change.
-- **Account authentication model is undesigned.** `packages/sync` (added
-  after this doc's §7/§8) implements the pure revision/lease logic only —
-  it deliberately does not decide how a practitioner authenticates to the
-  cloud API (email+password vs. magic link, session cookie vs. bearer
-  token, device enrollment flow). Per the hard-limit rule in every repo's
-  `CLAUDE.md` ("never guess a missing decision"), this needs an explicit
-  decision before the actual Durable Object/API wiring is built, not an
-  invented default.
+- **Account authentication: resolved, implemented.** Mirrors Saldima's
+  actual mechanism exactly — PBKDF2 password hashing (100,000 iterations,
+  Cloudflare Workers' WebCrypto hard cap), session cookies, TOTP 2FA,
+  per-tenant vanity-subdomain provisioning via KV. See `apps/web/src/auth.ts`,
+  `signup.ts`, `provision.ts`, `accounts.ts`, `vault-do.ts`.
 - **Stripe product/price setup: done for dev, test mode only.** "Advocatra
   Monthly Subscription" ($20/mo) and "Advocatra Annual Subscription"
   ($200/yr) exist under the same arleyxu financial services Stripe account

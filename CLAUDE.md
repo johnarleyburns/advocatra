@@ -68,11 +68,17 @@ packages/
   billing/               canonical billing schema: FeeSchedule, Engagement,
                           TimeEntry, Retainer, Invoice, Payment, and the
                           fee-schedule guarantee-window invariant
-  crypto/                Web Crypto key hierarchy (passphrase KDF, wrap/unwrap,
-                          HKDF, AEAD envelope) — client-side only, never
-                          imported by apps/web
-  vault/                 manifest + snapshot assembly on packages/crypto —
-                          client-side only, never imported by apps/web
+  crypto/                Web Crypto key hierarchy: passphrase KDF, recovery-
+                          code KDF, wrap/unwrap, HKDF, AAD-bound AEAD
+                          envelope — client-side only. apps/web may import
+                          only `EncryptedEnvelopeSchema` from it (structural
+                          validation of ciphertext metadata), enforced by
+                          `check:no-decrypt-in-app`, never anything that
+                          reads or uses the vault key.
+  vault/                 manifest (incl. the dual passphrase/recovery-code
+                          keyEnvelope) + createVault/unlockVaultWith* +
+                          snapshot assembly on packages/crypto — client-side
+                          only, never imported by apps/web at all
   sync/                  revision + lease logic (pure)
   testkit/               fakes (Clock, IdGenerator, KV, SQL, fetch, email) —
                           apps/web depends on this for port type definitions,
@@ -199,7 +205,22 @@ decrypts anything it stores; this is enforced mechanically
 (`check:no-decrypt-in-app`), not just documented. Attachment/document
 object storage is not yet wired (only the whole-vault "records" snapshot).
 
-Not yet implemented: attachment/document object upload (separate from the
-records snapshot), real Stripe product/price/webhook secrets
-(owner-supplied — in progress), the wildcard DNS record vanity subdomains
-need in dev/staging/production, and any UI.
+Manifest/vault-key gap closed: `packages/vault/src/vault-access.ts`
+(`createVault`, `unlockVaultWithPassphrase`, `unlockVaultWithRecoveryCode`)
+and the extended `VaultManifestSchema.keyEnvelope`, ported from Saldima's
+shipped passphrase+recovery-code design — the previously-missing piece
+that let any client actually create or open a vault. `packages/crypto`
+gained `recovery.ts` (Crockford-base32 recovery codes, HKDF-derived KEK)
+and AAD-bound envelopes (`EnvelopeAad`: `{vaultId, purpose, schemaVersion}`
+authenticated as AES-GCM additional data, so a ciphertext can't be
+replayed across vaults or purposes) — `encryptVaultSnapshot`/
+`decryptVaultSnapshot`/`encryptDocumentObject`/`decryptDocumentObject` all
+take a `vaultId` now. This closes the §9 risk this doc flagged earlier in
+the same conversation that discovered it.
+
+Not yet implemented: iOS/Android/MCP ports of `createVault`/
+`unlockVaultWith*` (see TECHNICAL-DESIGN.md §9), attachment/document
+object upload (separate from the records snapshot), real Stripe product/
+price/webhook secrets for staging/production (dev is done, test mode),
+the wildcard DNS record vanity subdomains need in staging/production
+(dev's exists), and any UI.

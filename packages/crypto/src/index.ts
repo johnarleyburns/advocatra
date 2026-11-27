@@ -3,4 +3,5 @@ export * from "./bytes.ts";
 export * from "./derive.ts";
 export * from "./envelope.ts";
 export * from "./passphrase-kdf.ts";
+export * from "./recovery.ts";
 export * from "./vault-key.ts";

@@ -173,7 +173,14 @@ export class Vault extends DurableObject<Env> {
         sessionCookieName(secure),
       );
       const session = token ? await validateSession(this.deps(c.req.raw), token) : null;
-      return session ? c.json({ ok: true, ...session }) : c.json({ ok: false }, 401);
+      // tenantId is the authoritative vaultId every client (web, iOS,
+      // Android, MCP) must agree on for the vault's AAD binding — without
+      // this, a client would have no way to learn it except by having it
+      // hand-configured out of band (as advocatra-mcp's ADVOCATRA_VAULT_ID
+      // does today, a workaround this makes unnecessary for new clients).
+      return session
+        ? c.json({ ok: true, ...session, tenantId: this.tenantId(c.req.raw) })
+        : c.json({ ok: false }, 401);
     });
 
     // Opaque storage for the vault manifest (the dual passphrase/recovery-

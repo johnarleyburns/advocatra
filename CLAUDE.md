@@ -218,6 +218,13 @@ replayed across vaults or purposes) — `encryptVaultSnapshot`/
 take a `vaultId` now. This closes the §9 risk this doc flagged earlier in
 the same conversation that discovered it.
 
+`GET /session` now also returns `tenantId` — the authoritative `vaultId`
+every client of one tenant must agree on for the vault's AAD binding.
+Found while building the iOS vault port: without this, a client had no
+way to learn its own vaultId except hand-configuration (what
+`advocatra-mcp`'s `ADVOCATRA_VAULT_ID` env var does today, a workaround
+new clients no longer need).
+
 Vault-setup HTTP endpoints done: `GET`/`PUT /vault/manifest` on the `Vault`
 DO, ported from Saldima's shipped `GET`/`PUT /app/vault/keys`
 (`apps/web/src/vault-store.ts`/`book.ts` there). Same opaque-blob

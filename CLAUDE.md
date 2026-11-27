@@ -218,8 +218,22 @@ replayed across vaults or purposes) — `encryptVaultSnapshot`/
 take a `vaultId` now. This closes the §9 risk this doc flagged earlier in
 the same conversation that discovered it.
 
+Vault-setup HTTP endpoints done: `GET`/`PUT /vault/manifest` on the `Vault`
+DO, ported from Saldima's shipped `GET`/`PUT /app/vault/keys`
+(`apps/web/src/vault-store.ts`/`book.ts` there). Same opaque-blob
+philosophy as the snapshot routes: `vault.ts`'s `loadManifest`/
+`saveManifest` store and serve the manifest JSON a client built with
+`@advocatra/vault`'s `createVault` without ever parsing it — `@advocatra/
+vault` stays banned from `apps/web` entirely (`check:no-decrypt-in-app`
+still passes). This closes the full loop: a client can now `createVault`
+→ `PUT /vault/manifest` → later `GET /vault/manifest` →
+`unlockVaultWithPassphrase`/`unlockVaultWithRecoveryCode`, all without the
+server ever seeing a passphrase, a recovery code, or an unwrapped key.
+
 Not yet implemented: iOS/Android/MCP ports of `createVault`/
-`unlockVaultWith*` (see TECHNICAL-DESIGN.md §9), attachment/document
+`unlockVaultWith*` (see TECHNICAL-DESIGN.md §9) — `advocatra-mcp` can now
+be updated to use a real passphrase unlock against `/vault/manifest`
+instead of its raw-master-key-file workaround — attachment/document
 object upload (separate from the records snapshot), real Stripe product/
 price/webhook secrets for staging/production (dev is done, test mode),
 the wildcard DNS record vanity subdomains need in staging/production

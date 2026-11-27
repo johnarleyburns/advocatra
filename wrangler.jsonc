@@ -1,0 +1,30 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "advocatra",
+  "main": "apps/web/src/index.ts",
+  "compatibility_date": "2026-11-20",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  "vars": { "ENVIRONMENT": "local" },
+  "env": {
+    "dev": {
+      "name": "advocatra-dev",
+      "vars": { "ENVIRONMENT": "dev", "APP_ORIGIN": "https://dev.advocatra.com" },
+      "workers_dev": false,
+      "routes": [{ "pattern": "dev.advocatra.com", "custom_domain": true }]
+    },
+    "staging": {
+      "name": "advocatra-staging",
+      "vars": { "ENVIRONMENT": "staging", "APP_ORIGIN": "https://stage.advocatra.com" },
+      "workers_dev": false,
+      "routes": [{ "pattern": "stage.advocatra.com", "custom_domain": true }]
+    },
+    "production": {
+      "name": "advocatra-production",
+      "vars": { "ENVIRONMENT": "production", "APP_ORIGIN": "https://advocatra.com" },
+      "workers_dev": false,
+      "routes": [{ "pattern": "advocatra.com", "custom_domain": true }]
+    }
+  }
+}

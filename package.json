@@ -1,0 +1,33 @@
+{
+  "name": "advocatra",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Advocatra: open-source IRS representation case management.",
+  "license": "AGPL-3.0-only",
+  "packageManager": "pnpm@11.22.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "check:spdx": "node scripts/check-spdx.mjs",
+    "check:licenses": "node scripts/license-scan.mjs"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.3.4",
+    "@cloudflare/workers-types": "^5.20261120.1",
+    "@types/node": "^22.10.2",
+    "@vitest/coverage-v8": "^4.0.8",
+    "hono": "^4.13.19",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.8",
+    "wrangler": "4.166.0",
+    "zod": "^4.0.0"
+  }
+}

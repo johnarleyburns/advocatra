@@ -26,6 +26,7 @@ const sampleEnvelope: EncryptedEnvelope = {
   algorithm: "AES-256-GCM",
   iv: "aaaaaaaaaaaaaaaaaaaa",
   ciphertext: "bbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  aad: { vaultId: "tenant-1", purpose: "records", schemaVersion: 1 },
 };
 
 describe("downloadSnapshot", () => {

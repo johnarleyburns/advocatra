@@ -63,22 +63,36 @@ describe("encryptVaultSnapshot / decryptVaultSnapshot", () => {
   it("round-trips a full vault, including a Tax Court matter and a fee schedule", async () => {
     const material = generateVaultMasterKeyMaterial();
     const records = sampleRecords();
-    const envelope = await encryptVaultSnapshot(records, material);
-    const decrypted = await decryptVaultSnapshot(envelope, material);
+    const envelope = await encryptVaultSnapshot(records, material, "vault-1");
+    const decrypted = await decryptVaultSnapshot(envelope, material, "vault-1");
     expect(decrypted).toEqual(records);
   });
 
   it("round-trips an empty vault", async () => {
     const material = generateVaultMasterKeyMaterial();
-    const envelope = await encryptVaultSnapshot(emptyVaultRecords(), material);
-    expect(await decryptVaultSnapshot(envelope, material)).toEqual(emptyVaultRecords());
+    const envelope = await encryptVaultSnapshot(
+      emptyVaultRecords(),
+      material,
+      "vault-1",
+    );
+    expect(await decryptVaultSnapshot(envelope, material, "vault-1")).toEqual(
+      emptyVaultRecords(),
+    );
   });
 
   it("fails with a cryptographic error under the wrong master key", async () => {
     const material = generateVaultMasterKeyMaterial();
     const wrongMaterial = generateVaultMasterKeyMaterial();
-    const envelope = await encryptVaultSnapshot(sampleRecords(), material);
-    await expect(decryptVaultSnapshot(envelope, wrongMaterial)).rejects.toThrow();
+    const envelope = await encryptVaultSnapshot(sampleRecords(), material, "vault-1");
+    await expect(
+      decryptVaultSnapshot(envelope, wrongMaterial, "vault-1"),
+    ).rejects.toThrow();
+  });
+
+  it("fails when decrypted under the wrong vaultId (cross-vault replay)", async () => {
+    const material = generateVaultMasterKeyMaterial();
+    const envelope = await encryptVaultSnapshot(sampleRecords(), material, "vault-1");
+    await expect(decryptVaultSnapshot(envelope, material, "vault-2")).rejects.toThrow();
   });
 
   it("fails with a schema error when the (correctly decrypted) plaintext is malformed", async () => {
@@ -90,8 +104,9 @@ describe("encryptVaultSnapshot / decryptVaultSnapshot", () => {
     const malformed = await encryptBytes(
       key,
       utf8ToBytes(JSON.stringify({ taxpayers: "not-an-array" })),
+      { vaultId: "vault-1", purpose: "records", schemaVersion: 1 },
     );
-    await expect(decryptVaultSnapshot(malformed, material)).rejects.toThrow(
+    await expect(decryptVaultSnapshot(malformed, material, "vault-1")).rejects.toThrow(
       /taxpayers/,
     );
   });

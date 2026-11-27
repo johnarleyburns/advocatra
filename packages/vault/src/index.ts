@@ -3,3 +3,4 @@ export * from "./document-object.ts";
 export * from "./manifest.ts";
 export * from "./records.ts";
 export * from "./snapshot.ts";
+export * from "./vault-access.ts";

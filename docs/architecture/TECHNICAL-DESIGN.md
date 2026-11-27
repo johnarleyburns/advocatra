@@ -105,9 +105,11 @@ billing/
   payments/             Payment records
 ```
 
-This is a conceptual layout. The browser implementation uses IndexedDB
-stores with the same logical shape; the native implementations use an
-on-disk directory (iOS: Application Support; Android: app-private storage).
+This is a conceptual layout, realized on-disk on iOS/Android (iOS:
+Application Support; Android: app-private storage) and, for the web client,
+realized only as the decrypted-in-memory shape of whatever snapshot the
+cloud API just returned — the browser has no local-first copy of this
+layout at all (see §5).
 
 ### Core objects (representative fields, not exhaustive)
 
@@ -157,16 +159,29 @@ fields manually; there is no DAWSON integration in scope.
 
 ## 5. Local persistence and encryption
 
-### Storage adapters
+### Storage model per platform
+
+This corrects an earlier draft of this document, which carried over a
+browser-has-its-own-local-vault model from an initial sketch. That is not
+the agreed design: **the web client has no local-first vault at all.** It
+is a full-featured but cloud-dependent client — same features as the native
+apps, no offline mode, nothing durable in IndexedDB/localStorage beyond
+per-viewer conveniences. iOS and Android are the local-first platforms.
 
 | Operation | Browser | iOS/Android |
 | --- | --- | --- |
-| Create vault | IndexedDB | app-private directory |
-| Open vault | browser database | local directory |
-| Add document | file upload | filesystem/photo picker |
-| Export vault | download archive | save archive |
-| Import vault | upload archive | open archive |
-| Cloud sync | encrypted upload/download | encrypted upload/download |
+| Vault lives | only in the cloud (encrypted) | on-device, authoritative; optionally also synced to the cloud |
+| Open vault | passphrase unlock → fetch encrypted snapshot from the cloud API → decrypt in-memory | passphrase/biometric unlock → decrypt the on-device vault directly |
+| Add document | upload; encrypted client-side before the request leaves the browser | filesystem/photo picker; encrypted before being written to disk |
+| Export vault | download the decrypted-then-re-encrypted-for-export archive for this session only | save a portable archive from the on-device vault, any time, no network |
+| Import vault | n/a (there is nothing local to import into) | open archive, decrypt, replace or merge the on-device vault |
+| Working offline | not supported — no cloud, no client | fully supported; this is the normal mode |
+| Cloud sync | the client's only mode of operation | optional; snapshot upload/download per §7 |
+
+A browser session with no network and no account is not a degraded version
+of the product — it is simply the product you can't currently use there.
+This is why the cloud subscription is "optional" for the native apps but
+effectively required to do anything useful on the web.
 
 ### Encryption, every platform
 
@@ -280,6 +295,11 @@ vault makes the problem much easier than general multi-writer sync.
   deferred, same as Saldima defers it. The application tells the user to
   pull the newer revision first.
 
+For the web client specifically, "open the vault" and "pull the latest
+snapshot" are the same operation, and "save" and "push a new revision" are
+the same operation — there is no separate local vault state to reconcile
+against, consistent with §5's "web has no local-first vault."
+
 ## 8. Repository layout
 
 ```
@@ -287,7 +307,8 @@ advocatra/                     # web/cloud, TypeScript
   apps/web/                    # Cloudflare Workers, Hono
   packages/case/                # canonical case schema (pure TS)
   packages/billing/              # canonical billing schema (pure TS)
-  packages/crypto/               # Web Crypto wrappers (added when storage lands)
+  packages/crypto/               # Web Crypto key hierarchy (passphrase KDF, wrap/unwrap, HKDF, AEAD envelope)
+  packages/vault/                # manifest + snapshot assembly on top of packages/crypto
   packages/sync/                 # snapshot sync client (added later)
   docs/architecture/TECHNICAL-DESIGN.md   # this document
 

@@ -54,6 +54,21 @@ importers:
         specifier: ^4.0.0
         version: 4.6.7
 
+  packages/vault:
+    dependencies:
+      '@advocatra/billing':
+        specifier: workspace:*
+        version: link:../billing
+      '@advocatra/case':
+        specifier: workspace:*
+        version: link:../case
+      '@advocatra/crypto':
+        specifier: workspace:*
+        version: link:../crypto
+      zod:
+        specifier: ^4.0.0
+        version: 4.6.7
+
 packages:
 
   '@babel/helper-string-parser@7.29.15':

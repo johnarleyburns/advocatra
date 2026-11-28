@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   canSupersedeFeeSchedule,
   createFeeSchedule,
+  FeeScheduleSchema,
   feeScheduleHonorUntil,
   MINIMUM_GUARANTEE_DAYS,
 } from "./fee-schedule.ts";
@@ -10,12 +11,14 @@ import {
 const published = "2027-01-01T00:00:00Z";
 const lineItems = [
   {
+    id: "li1",
     serviceCode: "1040-W2",
     label: "1040, W-2 income only",
     pricingType: "flat" as const,
     amountCents: 8000,
   },
   {
+    id: "li2",
     serviceCode: "1040-SCHC-INVEST",
     label: "1040, business + investment income",
     pricingType: "flat" as const,
@@ -45,7 +48,7 @@ describe("createFeeSchedule", () => {
         guaranteeDays: 7,
         lineItems,
       }),
-    ).toThrow(/overrideReason/);
+    ).toThrow(/overrideReason/i);
   });
 
   it("allows a shorter guarantee with an explicit override reason", () => {
@@ -60,6 +63,34 @@ describe("createFeeSchedule", () => {
       },
       { overrideReason: "counsel-approved exception, see matter #123" },
     );
+    expect(schedule.guaranteeDays).toBe(7);
+  });
+});
+
+describe("FeeScheduleSchema", () => {
+  it("refuses a short guaranteeDays even via a direct .parse(), bypassing createFeeSchedule entirely", () => {
+    expect(() =>
+      FeeScheduleSchema.parse({
+        id: "fs1",
+        title: "2027 Standard Fee Schedule",
+        effectiveDate: "2027-01-01",
+        publishedAt: published,
+        guaranteeDays: 7,
+        lineItems,
+      }),
+    ).toThrow(/overrideReason/i);
+  });
+
+  it("accepts a short guaranteeDays via a direct .parse() when guaranteeDaysOverrideReason is set", () => {
+    const schedule = FeeScheduleSchema.parse({
+      id: "fs1",
+      title: "2027 Standard Fee Schedule",
+      effectiveDate: "2027-01-01",
+      publishedAt: published,
+      guaranteeDays: 7,
+      guaranteeDaysOverrideReason: "counsel-approved exception, see matter #123",
+      lineItems,
+    });
     expect(schedule.guaranteeDays).toBe(7);
   });
 });

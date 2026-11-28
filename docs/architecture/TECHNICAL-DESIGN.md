@@ -242,9 +242,12 @@ themselves confidential).
 
 - **FeeSchedule** — the firm's published rate card, versioned.
   `effectiveDate`, `publishedAt`, `guaranteeDays` (default 30 — see the
-  invariant below), line items: `{ serviceCode, label, pricingType:
+  invariant below), line items: `{ id, serviceCode, label, pricingType:
   "flat"|"hourly", amount }` (e.g. `1040-W2` flat $80, `1040-SCHC-INVEST`
-  flat $500, `HOURLY-STANDARD` hourly rate).
+  flat $500, `HOURLY-STANDARD` hourly rate). `id` is what
+  `Engagement.quotedFromLineItemId` (below) actually points at — without
+  it there's nothing for that traceability link to reference, a gap an
+  audit of this repo caught (the schema had no `id` field until then).
 - **Engagement** — the actual commitment made to one client: taxpayerId,
   optional matterId, taxYear, description, pricingType
   (`flat`\|`hourly`\|`retainer`), committedAmount or hourlyRate, and a

@@ -19,6 +19,7 @@ function sampleRecords(): VaultRecords {
     publishedAt: "2027-01-01T00:00:00Z",
     lineItems: [
       {
+        id: "li1",
         serviceCode: "1040-W2",
         label: "1040, W-2 only",
         pricingType: "flat",

@@ -364,16 +364,23 @@ advocatra-case-verifier/        # deferred to M3: cross-platform fixture parity
   documented fallback, not an invented scheme (same constant Saldima
   ships) — but Argon2id remains preferred if/when an audited WASM
   implementation is vetted (license, audit status) for adoption.
-- **iOS/Android/MCP ports of `createVault`/`unlockVaultWithPassphrase`/
-  `unlockVaultWithRecoveryCode` don't exist yet.** The web repo
-  (`packages/crypto`/`packages/vault`) is the only place the crypto for
-  creating or unlocking a vault exists today. The server-side storage half
-  is done — `GET`/`PUT /vault/manifest` on the `Vault` DO (opaque,
-  session-gated, ported from Saldima's `/app/vault/keys`) — so any client
-  can now store/fetch the manifest; what's missing is each client doing
-  the local `createVault`/`unlockVaultWith*` sequence itself. Every client
-  — the native apps, and any future local MCP server — needs its own
-  hand-port of this exact sequence (no shared code, same as the rest of
+- **iOS and Android now have real, independent ports of `createVault`/
+  `unlockVaultWithPassphrase`/`unlockVaultWithRecoveryCode`** (`advocatra-ios`'s
+  `AdvocatraVault`, `advocatra-android`'s `:vault`), each cross-platform-
+  verified against this repo's own `scripts/generate-vault-fixtures.mjs`
+  vectors, not just internally consistent. `advocatra-mcp` unlocks (never
+  creates) a vault by consuming `@advocatra/vault` directly via a git
+  submodule, not an independent port — a deliberate exception, since it's
+  a Node/TS tool itself, unlike the native apps. What's still missing on
+  Android specifically is the Android-Keystore-backed secure storage of
+  the unwrapped master key and any UI (needs a real Android Gradle Plugin
+  module and SDK-aware CI, neither set up yet) — the crypto/manifest/
+  local-storage/networking logic itself is done and tested. The
+  server-side storage half is done too — `GET`/`PUT /vault/manifest` on
+  the `Vault` DO (opaque, session-gated, ported from Saldima's
+  `/app/vault/keys`) — so any client can store/fetch the manifest. Every
+  independent port needed its own hand-written implementation (no shared
+  code, same as the rest of
   this project), not a reinvention of it.
 - **StoreKit/Play Billing.** If the native apps ever surface the $20/mo or
   $200/yr hosted plan for purchase *inside* the app, Apple/Google may

@@ -326,11 +326,15 @@ advocatra/                     # web/cloud, TypeScript
   packages/crypto/               # Web Crypto key hierarchy (passphrase KDF, wrap/unwrap, HKDF, AEAD envelope)
   packages/vault/                # manifest + snapshot assembly on top of packages/crypto
   packages/sync/                 # revision + lease logic (pure); no Workers/DO wiring yet
+  packages/testkit/              # fakes (Clock, IdGenerator, KV, SQL, fetch, email) for every package/app above
   docs/architecture/TECHNICAL-DESIGN.md   # this document
 
 advocatra-ios/                 # native Swift/SwiftUI
   AdvocatraCore/                # pure-Swift mirror of case + billing schema
-  AdvocatraSync/                # snapshot sync client (added later)
+  AdvocatraVault/                # vault crypto, on-device storage, and the cloud
+                                # networking client (login, vault manifest/snapshot) --
+                                # no separate AdvocatraSync module; that responsibility
+                                # lives here instead
   Advocatra/                    # SwiftUI app
   docs/architecture/TECHNICAL-DESIGN.md   # mirrored copy
 
@@ -340,6 +344,9 @@ advocatra-android/              # native Kotlin/Compose
   app/                           # Compose app
   docs/architecture/TECHNICAL-DESIGN.md   # mirrored copy
 
+advocatra-mcp/                  # local, read-only MCP server (Claude/opencode) over a
+                                # decrypted vault snapshot -- a fourth real client of
+                                # the cloud API, not just a future port target
 advocatra-case-verifier/        # deferred to M3: cross-platform fixture parity
 ```
 

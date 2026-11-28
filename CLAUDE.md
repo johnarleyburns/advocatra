@@ -202,8 +202,20 @@ Cloud service, phase B done: the `Vault` DO's encrypted snapshot sync —
 session-gated, backed by R2, with revision (reject-stale) and
 single-writer-lease enforcement via `packages/sync`. The DO never
 decrypts anything it stores; this is enforced mechanically
-(`check:no-decrypt-in-app`), not just documented. Attachment/document
-object storage is not yet wired (only the whole-vault "records" snapshot).
+(`check:no-decrypt-in-app`), not just documented.
+
+Attachment/document object storage is now wired too: `GET`/`PUT
+/vault/documents/:id` on the `Vault` DO, same opaque-blob/session-gated
+pattern, keyed by the id a `CaseDocument.encryptedObjectRef` points at —
+a separate R2 key per document (not folded into the whole-vault "records"
+snapshot), so editing a task description never re-uploads a
+multi-hundred-megabyte document set. `check-no-decrypt-in-app.mjs` was
+also fixed in the same change: it only recognized the per-name `{ type X
+}` import-type modifier, not whole-statement `import type { X }` syntax
+(which Biome's formatter switches to whenever a file imports only one
+type-only name from a module) — meaning it had silently stopped catching
+anything on exactly that shape since before this fix. Verified by
+planting a violation both before and after the fix.
 
 Manifest/vault-key gap closed: `packages/vault/src/vault-access.ts`
 (`createVault`, `unlockVaultWithPassphrase`, `unlockVaultWithRecoveryCode`)

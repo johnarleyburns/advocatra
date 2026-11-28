@@ -113,6 +113,41 @@ export async function saveManifest(deps: VaultDeps, json: string): Promise<void>
   await deps.r2.put(manifestObjectKey(deps.tenantId), json);
 }
 
+function documentObjectKey(tenantId: string, documentId: string): string {
+  return `tenants/${tenantId}/documents/${documentId}.json`;
+}
+
+/**
+ * Opaque storage for one encrypted document/attachment object (the bytes
+ * a `CaseDocument.encryptedObjectRef` points at) — a separate key from the
+ * whole-vault "records" snapshot above, so editing a task description
+ * never re-uploads a multi-hundred-megabyte document set (TECHNICAL-
+ * DESIGN.md §7). Same opaque-blob philosophy as `loadManifest`/
+ * `saveManifest`: this file never parses the envelope's plaintext, only
+ * `EncryptedEnvelopeSchema`'s metadata.
+ */
+export async function loadDocumentObject(
+  deps: VaultDeps,
+  documentId: string,
+): Promise<EncryptedEnvelope | null> {
+  const object = await deps.r2.get(documentObjectKey(deps.tenantId, documentId));
+  if (!object) return null;
+  const parsed: unknown = JSON.parse(await object.text());
+  return EncryptedEnvelopeSchema.parse(parsed);
+}
+
+export async function saveDocumentObject(
+  deps: VaultDeps,
+  documentId: string,
+  envelope: EncryptedEnvelope,
+): Promise<void> {
+  const validated = EncryptedEnvelopeSchema.parse(envelope);
+  await deps.r2.put(
+    documentObjectKey(deps.tenantId, documentId),
+    JSON.stringify(validated),
+  );
+}
+
 export interface UploadInput {
   readonly deviceId: string;
   readonly baseRevision: number;

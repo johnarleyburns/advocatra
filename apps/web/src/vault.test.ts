@@ -6,8 +6,10 @@ import {
   acquireOrRenewLease,
   downloadSnapshot,
   LeaseConflictError,
+  loadDocumentObject,
   loadManifest,
   RevisionConflictError,
+  saveDocumentObject,
   saveManifest,
   uploadSnapshot,
   type VaultDeps,
@@ -168,6 +170,41 @@ describe("manifest storage", () => {
     const replacement = JSON.stringify({ version: "new" });
     await saveManifest(deps, replacement);
     expect(await loadManifest(deps)).toBe(replacement);
+  });
+});
+
+describe("document object storage", () => {
+  it("returns null for a document that has never been uploaded", async () => {
+    const deps = makeDeps();
+    expect(await loadDocumentObject(deps, "doc-1")).toBeNull();
+  });
+
+  it("stores and serves back the same envelope", async () => {
+    const deps = makeDeps();
+    await saveDocumentObject(deps, "doc-1", sampleEnvelope);
+    expect(await loadDocumentObject(deps, "doc-1")).toEqual(sampleEnvelope);
+    expect(
+      (deps.r2 as FakeObjectStore).has("tenants/tenant-1/documents/doc-1.json"),
+    ).toBe(true);
+  });
+
+  it("keeps two documents under the same tenant independent", async () => {
+    const deps = makeDeps();
+    const otherEnvelope: EncryptedEnvelope = {
+      ...sampleEnvelope,
+      ciphertext: "cccccccccccccccccccccccccccc",
+    };
+    await saveDocumentObject(deps, "doc-1", sampleEnvelope);
+    await saveDocumentObject(deps, "doc-2", otherEnvelope);
+    expect(await loadDocumentObject(deps, "doc-1")).toEqual(sampleEnvelope);
+    expect(await loadDocumentObject(deps, "doc-2")).toEqual(otherEnvelope);
+  });
+
+  it("rejects a malformed envelope", async () => {
+    const deps = makeDeps();
+    await expect(
+      saveDocumentObject(deps, "doc-1", { version: 1 } as unknown as EncryptedEnvelope),
+    ).rejects.toThrow();
   });
 });
 

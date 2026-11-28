@@ -7,12 +7,20 @@
 // browser, not the server); @advocatra/crypto may be imported for
 // EncryptedEnvelopeSchema (structural validation of ciphertext metadata)
 // only — never for anything that reads, derives or uses the vault key.
+//
+// Handles both `import type { X } from "pkg"` (whole-statement type-only)
+// and `import { type X } from "pkg"` (per-name modifier) — allowlist
+// membership is checked against the bare name either way, since whether a
+// symbol is imported as a type or a value doesn't change whether it's
+// safe to expose. Biome's formatter switches between these two forms
+// depending on what else is imported from the same module, so both must
+// be handled or this guard silently stops catching anything.
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 
 const ALLOWED_CRYPTO_IMPORTS = new Set([
   "EncryptedEnvelopeSchema",
-  "type EncryptedEnvelope",
+  "EncryptedEnvelope",
 ]);
 
 const files = execFileSync(
@@ -43,7 +51,8 @@ for (const file of files) {
       .split(",")
       .map((n) => n.trim())
       .filter(Boolean);
-    for (const name of imported) {
+    for (const rawName of imported) {
+      const name = rawName.replace(/^type\s+/, "");
       if (!ALLOWED_CRYPTO_IMPORTS.has(name)) {
         violations.push(
           `${file}: imports "${name}" from @advocatra/crypto (only EncryptedEnvelopeSchema is allowed)`,

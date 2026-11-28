@@ -15,6 +15,7 @@
 // metadata (version/algorithm/base64 strings) — never the plaintext.
 
 import { DurableObject } from "cloudflare:workers";
+import type { EncryptedEnvelope } from "@advocatra/crypto";
 import { Hono } from "hono";
 import type { AccountDeps } from "./accounts.ts";
 import {
@@ -36,9 +37,11 @@ import {
   acquireOrRenewLease,
   downloadSnapshot,
   LeaseConflictError,
+  loadDocumentObject,
   loadManifest,
   type ObjectStorePort,
   RevisionConflictError,
+  saveDocumentObject,
   saveManifest,
   type UploadInput,
   uploadSnapshot,
@@ -242,6 +245,36 @@ export class Vault extends DurableObject<Env> {
         ) {
           return c.json({ ok: false, error: error.message }, 409);
         }
+        if (error instanceof VaultSyncError)
+          return c.json({ ok: false, error: error.message }, 400);
+        throw error;
+      }
+    });
+
+    // Opaque storage for one encrypted document/attachment object, keyed
+    // by the id a CaseDocument.encryptedObjectRef points at. Same
+    // session-gating and never-decrypts guarantee as the routes above.
+    this.app.get("/vault/documents/:id", async (c) => {
+      if (!(await this.requireSession(c.req.raw)))
+        return c.json({ ok: false, error: "unauthenticated" }, 401);
+      const envelope = await loadDocumentObject(
+        this.vaultDeps(c.req.raw),
+        c.req.param("id"),
+      );
+      if (!envelope) return c.json({ ok: false, error: "not_found" }, 404);
+      return c.json({ ok: true, document: envelope });
+    });
+
+    this.app.put("/vault/documents/:id", async (c) => {
+      if (!(await this.requireSession(c.req.raw)))
+        return c.json({ ok: false, error: "unauthenticated" }, 401);
+      // `body`'s real shape is only guaranteed by EncryptedEnvelopeSchema
+      // inside saveDocumentObject, which parses it before anything else touches it.
+      const body = await c.req.json<EncryptedEnvelope>();
+      try {
+        await saveDocumentObject(this.vaultDeps(c.req.raw), c.req.param("id"), body);
+        return c.json({ ok: true });
+      } catch (error) {
         if (error instanceof VaultSyncError)
           return c.json({ ok: false, error: error.message }, 400);
         throw error;
